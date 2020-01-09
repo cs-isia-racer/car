@@ -1,4 +1,7 @@
+import argparse
 import asyncio
+import io
+import time
 
 import responder
 
@@ -6,11 +9,16 @@ MIN_STEERING, MAX_STEERING = -90, 90
 MIN_THROTTLE, MAX_THROTTLE = 0, 1
 
 class Car:
-    def __init__(self):
+    def __init__(self, mock=False):
         # Steering goes from -90 to 90
         self.steering = 0
         self.throttle = 0
         self.capturing = AtomicBool(False)
+        if args.mock:
+            from camera_mock import PiCamera
+        else:
+            from picamera import PiCamera
+        self.camera = PiCamera(resolution=(224, 224), framerate=30)
 
     def update_steering(self, delta):
         self.steering = max(MIN_STEERING, min(self.steering + delta, MAX_STEERING))
@@ -37,7 +45,7 @@ class AtomicBool:
         return res
 
 
-def run_api(car):
+def run_api(car, mock=False):
     api = responder.API()
 
     @api.route("/throttle/{value}")
@@ -54,19 +62,39 @@ def run_api(car):
     async def capture_get(req, resp):
         resp.media = {"value": await car.capturing.get()}
 
+    async def capture():
+        print("Starting capture")
+        stream = io.BytesIO()
+        for i, _ in enumerate(car.camera.capture_continuous(stream, format="jpeg", use_video_port=True)):
+            await asyncio.sleep(1 / 60)
+            if not await car.capturing.get():
+                break
+            stream.truncate()
+            stream.seek(0)
+            with open(f"test_{i}", "wb+") as f:
+                print(f"saving file test_{i}")
+                f.write(stream.getvalue())
+        print("Stopping capture")
+
     @api.route("/capture/start")
     async def capture_start(req, resp):
-        # TODO
+        loop = asyncio.get_event_loop()
         await car.capturing.set(True)
+        loop.create_task(capture())
         resp.media = {"value": True}
 
     @api.route("/capture/stop")
     async def capture_stop(req, resp):
-        # TODO
         await car.capturing.set(False)
         resp.media = {"value": False}
 
     api.run()
 
 if __name__ == '__main__':
-    run_api(Car())
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mock", action="store_true")
+    args = parser.parse_args()
+    car = Car(mock=args.mock)
+    car.camera.start_preview()
+    time.sleep(5)
+    run_api(car)
