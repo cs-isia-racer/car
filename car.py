@@ -2,8 +2,26 @@ import asyncio
 
 import responder
 
-MIN_STEERING, MAX_STEERING = -90, 90
+MIN_STEERING, MAX_STEERING = -45, 45
 MIN_THROTTLE, MAX_THROTTLE = 0, 1
+
+
+def init_pwm():
+    import wiringpi
+
+    wiringpi.wiringPiSetupGpio()
+    wiringpi.pinMode(18, wiringpi.GPIO.PWM_OUTPUT)
+    wiringpi.pwmSetMode(wiringpi.GPIO.PWM_MODE_MS)
+
+    wiringpi.pwmSetClock(192)
+    wiringpi.pwmSetRange(2000)
+
+
+def compute_servo_value(steer):
+    ratio = (steer - MIN_STEERING) / (MAX_STEERING - MIN_STEERING)
+    # TODO: figure out correct values for the servo (50 to 200)
+    return int(50 + (150 * ratio))
+
 
 class Car:
     def __init__(self):
@@ -11,10 +29,20 @@ class Car:
         self.steering = 0
         self.throttle = 0
         self.capturing = AtomicBool(False)
+        try:
+            init_pwm()
+        except Exception as err:
+            print(f"Could not find PWM module: {err}")
 
     def update_steering(self, delta):
         self.steering = max(MIN_STEERING, min(self.steering + delta, MAX_STEERING))
         # TODO PWM write
+
+        try:
+            wiringpi.pwmWrite(18, compute_servo_value(self.steering))
+        except Exception as err:
+            # Ignore error
+            pass
 
     def set_throttle(self, throttle):
         self.throttle = max(MIN_THROTTLE, min(throttle, MAX_THROTTLE))
@@ -67,6 +95,7 @@ def run_api(car):
         resp.media = {"value": False}
 
     api.run()
+
 
 if __name__ == '__main__':
     run_api(Car())
