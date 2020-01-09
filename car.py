@@ -41,26 +41,30 @@ def run_api(car):
     api = responder.API()
 
     @api.route("/throttle/{value}")
-    async def steer(req, resp, *, value):
+    async def throttle(req, resp, *, value):
         car.set_throttle(int(value))
-        resp.text = f'Set steering to: {car.throttle}'
+        resp.media = {"value": car.throttle}
 
     @api.route("/steer/{delta}")
     async def steer(req, resp, *, delta):
         car.update_steering(int(delta))
-        resp.text = f'Set steering to: {car.steering}'
+        resp.media = {"value": car.steering}
 
     @api.route("/capture")
-    async def steer(req, resp):
+    async def capture_get(req, resp):
+        resp.media = {"value": await car.capturing.get()}
+
+    @api.route("/capture/start")
+    async def capture_start(req, resp):
         # TODO
         await car.capturing.set(True)
-        resp.text = f'Starting capture'
+        resp.media = {"value": True}
 
-    @api.route("/stop_capture")
-    async def steer(req, resp):
+    @api.route("/capture/stop")
+    async def capture_stop(req, resp):
         # TODO
         await car.capturing.set(False)
-        resp.text = f'Stopping capture'
+        resp.media = {"value": False}
 
     api.run()
 
