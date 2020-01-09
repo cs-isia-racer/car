@@ -7,7 +7,6 @@ MIN_THROTTLE, MAX_THROTTLE = 0, 1
 
 class Car:
     def __init__(self):
-        self.api = responder.API()
         # Steering goes from -90 to 90
         self.steering = 0
         self.throttle = 0
@@ -21,30 +20,6 @@ class Car:
         self.throttle = max(MIN_THROTTLE, min(throttle, MAX_THROTTLE))
         # TODO PWM write
 
-    def run(self):
-        @self.api.route("/throttle/{value}")
-        async def steer(req, resp, *, value):
-            self.set_throttle(int(value))
-            resp.text = f'Set steering to: {self.throttle}'
-
-        @self.api.route("/steer/{delta}")
-        async def steer(req, resp, *, delta):
-            self.update_steering(int(delta))
-            resp.text = f'Set steering to: {self.steering}'
-
-        @self.api.route("/capture")
-        async def steer(req, resp):
-            # TODO
-            await self.capturing.set(True)
-            resp.text = f'Starting capture'
-
-        @self.api.route("/stop_capture")
-        async def steer(req, resp):
-            # TODO
-            await self.capturing.set(False)
-            resp.text = f'Stopping capture'
-
-        self.api.run()
 
 class AtomicBool:
     def __init__(self, value):
@@ -61,5 +36,33 @@ class AtomicBool:
 
         return res
 
+
+def run_api(car):
+    api = responder.API()
+
+    @api.route("/throttle/{value}")
+    async def steer(req, resp, *, value):
+        car.set_throttle(int(value))
+        resp.text = f'Set steering to: {car.throttle}'
+
+    @api.route("/steer/{delta}")
+    async def steer(req, resp, *, delta):
+        car.update_steering(int(delta))
+        resp.text = f'Set steering to: {car.steering}'
+
+    @api.route("/capture")
+    async def steer(req, resp):
+        # TODO
+        await car.capturing.set(True)
+        resp.text = f'Starting capture'
+
+    @api.route("/stop_capture")
+    async def steer(req, resp):
+        # TODO
+        await car.capturing.set(False)
+        resp.text = f'Stopping capture'
+
+    api.run()
+
 if __name__ == '__main__':
-    Car().run()
+    run_api(Car())
