@@ -25,21 +25,16 @@
             <li>throttle: <div id="throttle" /></li>
         </ul>
         <h2>Camera view</h2>
-        <img id="videoStream" width=640, height=640, alt="stream">
+        <img id="video-stream" width=640, height=640, alt="image not available">
     </body>
     <script>
-        const ws = new WebSocket("ws://localhost:5042/ws");
-        let count = 0;
-        setInterval(() => {
-            document.getElementById("videoStream").src = `/video-stream?c=${count}`;
-            count++;
-        }, 50)
+        const ws3 = new WebSocket(`ws://${document.location.host}/ws`);
 
-        ws.onmessage = event => {
+        ws3.onmessage = event => {
             const msg = JSON.parse(event.data);
             document.getElementById("throttle").innerHTML = msg.throttle;
             document.getElementById("steering").innerHTML = msg.steering;
-            document.getElementById("videoStream").src = msg.image;
+            document.getElementById("video-stream").src = `data:image/jpg;base64, ${msg.image}`;
         }
     </script>
 </html>

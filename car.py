@@ -114,7 +114,7 @@ def run_api(car):
         loop.create_task(run_stream())
         resp.media = {"value": True}
 
-    @api.route("/ws/data", websocket=True)
+    @api.route("/ws", websocket=True)
     async def websocket(ws):
         await ws.accept()
         while True:
@@ -126,7 +126,7 @@ def run_api(car):
                 {
                     "throttle": throttle,
                     "steering": steering,
-                    "image": base64.b64encode(image),
+                    "image": base64.b64encode(image).decode(),
                 }
             )
         await ws.close()
