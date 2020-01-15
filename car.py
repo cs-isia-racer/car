@@ -37,11 +37,12 @@ class Car:
 
     def update_steering(self, delta):
         self.steering = max(MIN_STEERING, min(self.steering + delta, MAX_STEERING))
+        # TODO: rescale steering
         self.pwmWrite(self.STEERING_PIN, self.steering)
 
     def update_throttle(self, delta):
         self.throttle = max(MIN_THROTTLE, min(self.throttle + delta, MAX_THROTTLE))
-        self.pwmWrite(self.THROTTLE_PIN, self.steering)
+        self.pwmWrite(self.THROTTLE_PIN, 60 + 60*self.throttle)
 
 
 class AtomicBool:
@@ -84,12 +85,12 @@ def run_api(car):
 
     @api.route("/throttle/{value}")
     async def throttle(req, resp, *, value):
-        car.update_throttle(int(value))
+        car.update_throttle(float(value))
         resp.media = {"value": car.throttle}
 
     @api.route("/steer/{delta}")
     async def steer(req, resp, *, delta):
-        car.update_steering(int(delta))
+        car.update_steering(float(delta))
         resp.media = {"value": car.steering}
 
     @api.route("/capture")
@@ -147,5 +148,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     car = Car(mock=args.mock)
     car.camera.start_preview()
-    time.sleep(5)
+    if not args.mock:
+        time.sleep(5)
     run_api(car)
