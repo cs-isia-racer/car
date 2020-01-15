@@ -56,7 +56,7 @@ class AtomicBool:
         return res
 
 
-def run_api(car, mock=False):
+def run_api(car):
     api = responder.API()
 
     @api.route("/throttle/{value}")
