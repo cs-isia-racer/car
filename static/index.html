@@ -32,7 +32,7 @@
             return (await fetch(route)).json()
         };
 
-        const setThrottle = async throttle => {
+        const updateThrottle = async throttle => {
             // TODO: use it
             const { value } = await request(`/throttle/${throttle}`);
             return value;
@@ -50,6 +50,7 @@
         };
 
         const steeringQuantum = 5;
+        const throttleQuantum = 0.05;
 
         (async () => {
             let capturing = (await request("/capture")).value;
@@ -60,8 +61,12 @@
                     await updateSteering(-steeringQuantum);
                 } else if (ev.code === 'ArrowRight') {
                     await updateSteering(steeringQuantum);
+                } else if (ev.code === 'ArrowUp') {
+                await updateThrottle(throttleQuantum);
+                } else if (ev.code === 'ArrowDown') {
+                    await updateThrottle(-throttleQuantum);
                 }
-            });
+        });
 
             button.addEventListener("click", async ev => {
                 if (capturing) {

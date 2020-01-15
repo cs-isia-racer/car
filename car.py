@@ -7,10 +7,11 @@ from pathlib import Path
 import responder
 
 MIN_STEERING, MAX_STEERING = -90, 90
-MIN_THROTTLE, MAX_THROTTLE = 0, 1
+MIN_THROTTLE, MAX_THROTTLE = -1, 1
 
 class Car:
-    STEERING_PIN = 18
+    STEERING_PIN = 13
+    THROTTLE_PIN = 18
 
     def __init__(self, mock=False):
         # Steering goes from -90 to 90
@@ -24,20 +25,23 @@ class Car:
             from picamera import PiCamera
             import wiringpi
         self.camera = PiCamera(resolution=(224, 224), framerate=30)
-        wiringpi.wiringPiSetupGpio()
-        wiringpi.pinMode(self.STEERING_PIN, wiringpi.GPIO.PWM_OUTPUT)
-        wiringpi.pwmSetMode(wiringpi.GPIO.PWM_MODE_MS)
-        wiringpi.pwmSetClock(192)
-        wiringpi.pwmSetRange(2000)
+
+        for pin in [self.STEERING_PIN, self.THROTTLE_PIN]:
+            wiringpi.wiringPiSetupGpio()
+            wiringpi.pinMode(pin, wiringpi.GPIO.PWM_OUTPUT)
+            wiringpi.pwmSetMode(wiringpi.GPIO.PWM_MODE_MS)
+            wiringpi.pwmSetClock(192)
+            wiringpi.pwmSetRange(2000)
+
         self.pwmWrite = wiringpi.pwmWrite
 
     def update_steering(self, delta):
         self.steering = max(MIN_STEERING, min(self.steering + delta, MAX_STEERING))
         self.pwmWrite(self.STEERING_PIN, self.steering)
 
-    def set_throttle(self, throttle):
-        self.throttle = max(MIN_THROTTLE, min(throttle, MAX_THROTTLE))
-        # TODO PWM write
+    def update_throttle(self, delta):
+        self.throttle = max(MIN_THROTTLE, min(self.throttle + delta, MAX_THROTTLE))
+        self.pwmWrite(self.THROTTLE_PIN, self.steering)
 
 
 class AtomicBool:
@@ -88,7 +92,7 @@ def run_api(car):
 
     @api.route("/throttle/{value}")
     async def throttle(req, resp, *, value):
-        car.set_throttle(int(value))
+        car.update_throttle(int(value))
         resp.media = {"value": car.throttle}
 
     @api.route("/steer/{delta}")
