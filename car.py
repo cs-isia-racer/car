@@ -78,14 +78,6 @@ def run_api(car):
             })
         await ws.close()
 
-    @api.route("/throttle")
-    async def get_throttle(req, resp):
-        resp.media = {"value": car.throttle}
-
-    @api.route("/steer")
-    async def get_steer(req, resp):
-        resp.media = {"value": car.steering}
-
     @api.route("/throttle/{value}")
     async def throttle(req, resp, *, value):
         car.set_throttle(int(value))
