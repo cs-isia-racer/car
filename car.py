@@ -92,6 +92,10 @@ def run_api(car, mock=False):
 
     @api.route("/capture/start")
     async def capture_start(req, resp):
+        if await car.capturing.get():
+            resp.status_code = api.status_codes.HTTP_400
+            resp.media = {"error": "already capturing"}
+            return
         out = req.params.get("out")
         out = Path(out or "out")
         loop = asyncio.get_event_loop()
@@ -101,6 +105,10 @@ def run_api(car, mock=False):
 
     @api.route("/capture/stop")
     async def capture_stop(req, resp):
+        if not await car.capturing.get():
+            resp.status_code = api.status_codes.HTTP_400
+            resp.media = {"error": "no capture to stop"}
+            return
         await car.capturing.set(False)
         resp.media = {"value": False}
 
