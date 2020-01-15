@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width" />
+        <title>Racer dashboard page</title>
+        <style>
+            #car-data {
+                font-size: 25px;
+                font-family: "Courier New", Courier, monospace;
+            }
+            #steering {
+                display: inline;
+            }
+            #throttle {
+                display: inline;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Dashboard</h1>
+        <ul id="car-data">
+            <li>steering: <div id="steering" /></li>
+            <li>throttle: <div id="throttle" /></li>
+        </ul>
+    </body>
+    <script>
+        const ws = new WebSocket("ws://localhost:5042/ws");
+
+        ws.onmessage = event => {
+            const msg = JSON.parse(event.data);
+            document.getElementById("throttle").innerHTML = msg.throttle;
+            document.getElementById("steering").textContent = msg.steering;
+        }
+    </script>
+</html>

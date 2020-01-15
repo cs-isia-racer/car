@@ -59,6 +59,33 @@ class AtomicBool:
 def run_api(car):
     api = responder.API()
 
+    @api.route("/ws", websocket=True)
+    async def websocket(ws):
+        throttle = None
+        steering = None
+        await ws.accept()
+        while True:
+            await asyncio.sleep(1 / 60)
+            new_throttle = car.throttle
+            new_steering = car.steering
+            if new_throttle == throttle and new_steering == steering:
+                continue
+            throttle = new_throttle
+            steering = new_steering
+            await ws.send_json({
+                "throttle": throttle,
+                "steering": steering,
+            })
+        await ws.close()
+
+    @api.route("/throttle")
+    async def get_throttle(req, resp):
+        resp.media = {"value": car.throttle}
+
+    @api.route("/steer")
+    async def get_steer(req, resp):
+        resp.media = {"value": car.steering}
+
     @api.route("/throttle/{value}")
     async def throttle(req, resp, *, value):
         car.set_throttle(int(value))
