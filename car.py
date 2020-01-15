@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import base64
 import io
 import time
 from pathlib import Path
@@ -16,9 +17,10 @@ class Car:
 
     def __init__(self, mock_cam=False, mock_pwm=False):
         # Steering goes from -90 to 90
-        self.steering = 0
-        self.throttle = 0
-        self.capturing = AtomicBool(False)
+        self.steering = Atomic(0)
+        self.throttle = Atomic(0)
+        self.capturing = Atomic(False)
+
         if mock_cam:
             from camera_mock import PiCamera
         else:
@@ -39,16 +41,22 @@ class Car:
 
         self.pwmWrite = wiringpi.pwmWrite
 
-    def update_steering(self, delta):
-        self.steering = max(MIN_STEERING, min(self.steering + delta, MAX_STEERING))
-        self.pwmWrite(self.STEERING_PIN, int(135 + 30 * self.steering))
+    async def update_steering(self, delta):
+        # FIXME there could be race conditions here
+        steering = await self.steering.get()
+        await self.steering.set(max(MIN_STEERING, min(steering + delta, MAX_STEERING)))
+        self.pwmWrite(self.STEERING_PIN, int(135 + 30 * steering))
+        return steering
 
-    def update_throttle(self, delta):
-        self.throttle = max(MIN_THROTTLE, min(self.throttle + delta, MAX_THROTTLE))
-        self.pwmWrite(self.THROTTLE_PIN, int(90 + 30 * self.throttle))
+    async def update_throttle(self, delta):
+        # FIXME there could be race conditions here
+        throttle = await self.throttle.get()
+        await self.throttle.set(max(MIN_THROTTLE, min(throttle + delta, MAX_THROTTLE)))
+        self.pwmWrite(self.THROTTLE_PIN, int(90 + 30 * throttle))
+        return throttle
 
 
-class AtomicBool:
+class Atomic:
     def __init__(self, value):
         self.value = value
         self.lock = asyncio.Lock()
@@ -106,41 +114,30 @@ def run_api(car):
         loop.create_task(run_stream())
         resp.media = {"value": True}
 
-    @api.route("/ws", websocket=True)
+    @api.route("/ws/data", websocket=True)
     async def websocket(ws):
-        throttle = None
-        steering = None
         await ws.accept()
         while True:
             await asyncio.sleep(1 / 60)
-            new_throttle = car.throttle
-            new_steering = car.steering
-            if new_throttle == throttle and new_steering == steering:
-                continue
-            throttle = new_throttle
-            steering = new_steering
+            throttle, steering, image = await asyncio.gather(
+                car.throttle.get(), car.steering.get(), dashboard_stream.read(),
+            )
             await ws.send_json(
-                {"throttle": throttle, "steering": steering,}
+                {
+                    "throttle": throttle,
+                    "steering": steering,
+                    "image": base64.b64encode(image),
+                }
             )
         await ws.close()
 
-    @api.route("/video-stream")
-    async def video_stream(req, resp):
-        resp.mimetype = "multipart/x-mixed-replace; boundary=frame"
-        header = b"--frame\r\nContent-Type: image/jpeg\r\n\r\n"
-        EOF = b"\r\n"
-        content = await dashboard_stream.read()
-        resp.content = header + content + EOF
-
     @api.route("/throttle/{value}")
     async def throttle(req, resp, *, value):
-        car.update_throttle(float(value))
-        resp.media = {"value": car.throttle}
+        resp.media = {"value": await car.update_throttle(float(value))}
 
     @api.route("/steer/{delta}")
     async def steer(req, resp, *, delta):
-        car.update_steering(float(delta))
-        resp.media = {"value": car.steering}
+        resp.media = {"value": await car.update_steering(float(delta))}
 
     @api.route("/capture")
     async def capture_get(req, resp):

@@ -19,18 +19,27 @@
     </head>
     <body>
         <h1>Dashboard</h1>
+        <h2>Characteristics</h2>
         <ul id="car-data">
             <li>steering: <div id="steering" /></li>
             <li>throttle: <div id="throttle" /></li>
         </ul>
+        <h2>Camera view</h2>
+        <img id="videoStream" width=640, height=640, alt="stream">
     </body>
     <script>
         const ws = new WebSocket("ws://localhost:5042/ws");
+        let count = 0;
+        setInterval(() => {
+            document.getElementById("videoStream").src = `/video-stream?c=${count}`;
+            count++;
+        }, 50)
 
         ws.onmessage = event => {
             const msg = JSON.parse(event.data);
             document.getElementById("throttle").innerHTML = msg.throttle;
-            document.getElementById("steering").textContent = msg.steering;
+            document.getElementById("steering").innerHTML = msg.steering;
+            document.getElementById("videoStream").src = msg.image;
         }
     </script>
 </html>
