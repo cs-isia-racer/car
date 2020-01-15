@@ -83,7 +83,7 @@ def run_api(car):
             stream.truncate()
             stream.seek(0)
             out.mkdir(parents=True, exist_ok=True)
-            output_file = out / f"test_{i}_{car.steering}_{car.throttle}.jpg"
+            output_file = out / f"pic_{i}_{car.steering}_{car.throttle}.jpg"
             posix_file_str = output_file.as_posix()
             with open(posix_file_str, "wb+") as f:
                 print(f"saving file {posix_file_str}")
@@ -98,6 +98,10 @@ def run_api(car):
             return
         out = req.params.get("out")
         out = Path(out or "out")
+        if out.exists():
+            resp.status_code = api.status_codes.HTTP_400
+            resp.media = {"error": "can't start capture into existing folder"}
+            return
         loop = asyncio.get_event_loop()
         await car.capturing.set(True)
         loop.create_task(capture(out))
