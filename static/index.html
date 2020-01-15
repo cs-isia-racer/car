@@ -37,6 +37,7 @@
             <li>steering: <div id="steering"></div></li>
             <li>throttle: <div id="throttle"></div></li>
         </ul>
+        <button id="stream-btn">Start streaming video</button>
         <button id="capture-btn">Start capturing video</button>
     </body>
 
@@ -44,6 +45,9 @@
     <script>
         const arrow = document.getElementById("arrow");
         const button = document.getElementById("capture-btn");
+        document.getElementById("stream-btn").addEventListener("click", () => {
+            fetch("/stream/start");
+        });
 
         const ws = new WebSocket(`ws://${document.location.host}/ws`);
 
