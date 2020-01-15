@@ -124,6 +124,14 @@ def run_api(car):
             )
         await ws.close()
 
+    @api.route("/video-stream")
+    async def video_stream(req, resp):
+        resp.mimetype = "multipart/x-mixed-replace; boundary=frame"
+        header = b"--frame\r\nContent-Type: image/jpeg\r\n\r\n"
+        EOF = b"\r\n"
+        content = await dashboard_stream.read()
+        resp.content = header + content + EOF
+
     @api.route("/throttle/{value}")
     async def throttle(req, resp, *, value):
         car.update_throttle(float(value))
