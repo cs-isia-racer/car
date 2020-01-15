@@ -84,9 +84,10 @@ def run_api(car, mock=False):
             stream.truncate()
             stream.seek(0)
             car.output.mkdir(parents=True, exist_ok=True)
-            output_file = car.output / f"test_{i}"
-            with open(output_file.as_posix(), "wb+") as f:
-                print(f"saving file test_{i}")
+            output_file = car.output / f"test_{i}_{car.steering}_{car.throttle}.jpg"
+            posix_file_str = output_file.as_posix()
+            with open(posix_file_str, "wb+") as f:
+                print(f"saving file {posix_file_str}")
                 f.write(stream.getvalue())
         print("Stopping capture")
 
