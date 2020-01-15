@@ -13,17 +13,20 @@ class Car:
     STEERING_PIN = 13
     THROTTLE_PIN = 18
 
-    def __init__(self, mock=False):
+    def __init__(self, mock_cam=False, mock_pwm=False):
         # Steering goes from -90 to 90
         self.steering = 0
         self.throttle = 0
         self.capturing = AtomicBool(False)
-        if mock:
+        if mock_cam:
             from camera_mock import PiCamera
-            import wiringpi_mock as wiringpi
         else:
             from picamera import PiCamera
+        if mock_pwm:
+            import wiringpi_mock as wiringpi
+        else:
             import wiringpi
+
         self.camera = PiCamera(resolution=(224, 224), framerate=30)
 
         for pin in [self.STEERING_PIN, self.THROTTLE_PIN]:
@@ -38,11 +41,11 @@ class Car:
     def update_steering(self, delta):
         self.steering = max(MIN_STEERING, min(self.steering + delta, MAX_STEERING))
         # TODO: rescale steering
-        self.pwmWrite(self.STEERING_PIN, self.steering)
+        self.pwmWrite(self.STEERING_PIN, int(self.steering))
 
     def update_throttle(self, delta):
         self.throttle = max(MIN_THROTTLE, min(self.throttle + delta, MAX_THROTTLE))
-        self.pwmWrite(self.THROTTLE_PIN, 60 + 60*self.throttle)
+        self.pwmWrite(self.THROTTLE_PIN, int(90 + 30*self.throttle))
 
 
 class AtomicBool:
@@ -144,10 +147,11 @@ def run_api(car):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mock", action="store_true")
+    parser.add_argument("--mock-cam", action="store_true")
+    parser.add_argument("--mock-pwm", action="store_true")
     args = parser.parse_args()
-    car = Car(mock=args.mock)
+    car = Car(mock_cam=args.mock_cam, mock_pwm=args.mock_pwm)
     car.camera.start_preview()
-    if not args.mock:
+    if not args.mock_cam:
         time.sleep(5)
     run_api(car)
