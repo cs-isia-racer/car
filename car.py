@@ -9,6 +9,7 @@ import responder
 MIN_STEERING, MAX_STEERING = -1, 1
 MIN_THROTTLE, MAX_THROTTLE = -1, 1
 
+
 class Car:
     STEERING_PIN = 13
     THROTTLE_PIN = 18
@@ -44,7 +45,7 @@ class Car:
 
     def update_throttle(self, delta):
         self.throttle = max(MIN_THROTTLE, min(self.throttle + delta, MAX_THROTTLE))
-        self.pwmWrite(self.THROTTLE_PIN, int(90 + 30*self.throttle))
+        self.pwmWrite(self.THROTTLE_PIN, int(90 + 30 * self.throttle))
 
 
 class AtomicBool:
@@ -63,8 +64,47 @@ class AtomicBool:
         return res
 
 
+class AtomicStream:
+    def __init__(self, stream):
+        self.stream = stream
+        self.lock = asyncio.Lock()
+
+    async def write(self, value):
+        async with self.lock:
+            self.stream.write(value)
+            self.stream.truncate()
+            self.stream.seek(0)
+
+    async def read(self):
+        async with self.lock:
+            res = self.stream.getvalue()
+        return res
+
+
 def run_api(car):
     api = responder.API()
+    dashboard_stream = AtomicStream(io.BytesIO())
+    capture_stream = AtomicStream(io.BytesIO())
+
+    async def run_stream():
+        print("Starting stream")
+        stream = io.BytesIO()
+        for _ in car.camera.capture_continuous(
+            stream, format="jpeg", use_video_port=True
+        ):
+            await asyncio.sleep(1 / 60)
+            stream.truncate()
+            stream.seek(0)
+            value = stream.getvalue()
+            await dashboard_stream.write(value)
+            await capture_stream.write(value)
+        print("Stopping stream")
+
+    @api.route("/stream/start")
+    async def stream_start(req, resp):
+        loop = asyncio.get_event_loop()
+        loop.create_task(run_stream())
+        resp.media = {"value": True}
 
     @api.route("/ws", websocket=True)
     async def websocket(ws):
@@ -79,10 +119,9 @@ def run_api(car):
                 continue
             throttle = new_throttle
             steering = new_steering
-            await ws.send_json({
-                "throttle": throttle,
-                "steering": steering,
-            })
+            await ws.send_json(
+                {"throttle": throttle, "steering": steering,}
+            )
         await ws.close()
 
     @api.route("/throttle/{value}")
@@ -101,19 +140,19 @@ def run_api(car):
 
     async def capture(out):
         print("Starting capture")
-        stream = io.BytesIO()
-        for i, _ in enumerate(car.camera.capture_continuous(stream, format="jpeg", use_video_port=True)):
+        i = 0
+        while True:
             await asyncio.sleep(1 / 60)
+            value = await capture_stream.read()
             if not await car.capturing.get():
                 break
-            stream.truncate()
-            stream.seek(0)
             out.mkdir(parents=True, exist_ok=True)
             output_file = out / f"pic_{i}_{car.steering}_{car.throttle}.jpg"
             posix_file_str = output_file.as_posix()
             with open(posix_file_str, "wb+") as f:
                 print(f"saving file {posix_file_str}")
-                f.write(stream.getvalue())
+                f.write(value)
+            i += 1
         print("Stopping capture")
 
     @api.route("/capture/start")
@@ -144,7 +183,8 @@ def run_api(car):
 
     api.run()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--mock-cam", action="store_true")
     parser.add_argument("--mock-pwm", action="store_true")
