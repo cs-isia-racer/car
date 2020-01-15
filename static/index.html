@@ -14,12 +14,29 @@
                 color: white;
                 font-weight: 800;
             }
+
+            #car-data {
+                font-size: 25px;
+                font-family: "Courier New", Courier, monospace;
+            }
+            #steering {
+                display: inline;
+            }
+            #throttle {
+                display: inline;
+            }
         </style>
 
     </head>
     <body>
+        <h1>Dashboard</h1>
         <img src="arrow.png" id="arrow" alt="">
+        <img id="video-stream" width=640, height=640, alt="image not available">
         <br />
+        <ul id="car-data">
+            <li>steering: <div id="steering"></div></li>
+            <li>throttle: <div id="throttle"></div></li>
+        </ul>
         <button id="capture-btn">Start capturing video</button>
     </body>
 
@@ -27,6 +44,15 @@
     <script>
         const arrow = document.getElementById("arrow");
         const button = document.getElementById("capture-btn");
+
+        const ws = new WebSocket(`ws://${document.location.host}/ws`);
+
+        ws.onmessage = event => {
+            const msg = JSON.parse(event.data);
+            document.getElementById("throttle").innerHTML = msg.throttle;
+            document.getElementById("steering").innerHTML = msg.steering;
+            document.getElementById("video-stream").src = `data:image/jpg;base64, ${msg.image}`;
+        }
 
         const request = async route => {
             return (await fetch(route)).json()
