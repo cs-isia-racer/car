@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import io
 import time
+from pathlib import Path
 
 import responder
 
@@ -9,12 +10,13 @@ MIN_STEERING, MAX_STEERING = -90, 90
 MIN_THROTTLE, MAX_THROTTLE = 0, 1
 
 class Car:
-    def __init__(self, mock=False):
+    def __init__(self, mock=False, output=None):
         # Steering goes from -90 to 90
         self.steering = 0
         self.throttle = 0
         self.capturing = AtomicBool(False)
-        if args.mock:
+        self.output = Path(output or "out")
+        if mock:
             from camera_mock import PiCamera
         else:
             from picamera import PiCamera
@@ -71,7 +73,9 @@ def run_api(car, mock=False):
                 break
             stream.truncate()
             stream.seek(0)
-            with open(f"test_{i}", "wb+") as f:
+            car.output.mkdir(parents=True, exist_ok=True)
+            output_file = car.output / f"test_{i}"
+            with open(output_file.as_posix(), "wb+") as f:
                 print(f"saving file test_{i}")
                 f.write(stream.getvalue())
         print("Stopping capture")
@@ -93,8 +97,9 @@ def run_api(car, mock=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--mock", action="store_true")
+    parser.add_argument("--output", "-o", type=str)
     args = parser.parse_args()
-    car = Car(mock=args.mock)
+    car = Car(mock=args.mock, output=args.output)
     car.camera.start_preview()
     time.sleep(5)
     run_api(car)
