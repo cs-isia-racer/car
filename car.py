@@ -6,7 +6,7 @@ from pathlib import Path
 
 import responder
 
-MIN_STEERING, MAX_STEERING = -90, 90
+MIN_STEERING, MAX_STEERING = -1, 1
 MIN_THROTTLE, MAX_THROTTLE = -1, 1
 
 class Car:
@@ -40,8 +40,7 @@ class Car:
 
     def update_steering(self, delta):
         self.steering = max(MIN_STEERING, min(self.steering + delta, MAX_STEERING))
-        # TODO: rescale steering
-        self.pwmWrite(self.STEERING_PIN, int(self.steering))
+        self.pwmWrite(self.STEERING_PIN, int(135 + 30 * self.steering))
 
     def update_throttle(self, delta):
         self.throttle = max(MIN_THROTTLE, min(self.throttle + delta, MAX_THROTTLE))

@@ -40,7 +40,8 @@
 
         const updateSteering = async delta => {
             const { value } = await request(`/steer/${delta}`);
-            arrow.style.transform = `rotate(${value}deg)`;
+            // TODO remove magic number 25 here (supposed to be max angle of rotation for servo on the car)
+            arrow.style.transform = `rotate(${25*value}deg)`;
             return value;
         };
 
@@ -49,7 +50,7 @@
             button.style.background = capturing ? "red" : "green";
         };
 
-        const steeringQuantum = 5;
+        const steeringQuantum = 0.05;
         const throttleQuantum = 0.05;
 
         (async () => {
