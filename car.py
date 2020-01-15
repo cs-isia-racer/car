@@ -12,12 +12,11 @@ MIN_THROTTLE, MAX_THROTTLE = 0, 1
 class Car:
     STEERING_PIN = 18
 
-    def __init__(self, mock=False, output=None):
+    def __init__(self, mock=False):
         # Steering goes from -90 to 90
         self.steering = 0
         self.throttle = 0
         self.capturing = AtomicBool(False)
-        self.output = Path(output or "out")
         if mock:
             from camera_mock import PiCamera
             import wiringpi_mock as wiringpi
@@ -74,7 +73,7 @@ def run_api(car, mock=False):
     async def capture_get(req, resp):
         resp.media = {"value": await car.capturing.get()}
 
-    async def capture():
+    async def capture(out):
         print("Starting capture")
         stream = io.BytesIO()
         for i, _ in enumerate(car.camera.capture_continuous(stream, format="jpeg", use_video_port=True)):
@@ -83,8 +82,8 @@ def run_api(car, mock=False):
                 break
             stream.truncate()
             stream.seek(0)
-            car.output.mkdir(parents=True, exist_ok=True)
-            output_file = car.output / f"test_{i}_{car.steering}_{car.throttle}.jpg"
+            out.mkdir(parents=True, exist_ok=True)
+            output_file = out / f"test_{i}_{car.steering}_{car.throttle}.jpg"
             posix_file_str = output_file.as_posix()
             with open(posix_file_str, "wb+") as f:
                 print(f"saving file {posix_file_str}")
@@ -93,9 +92,11 @@ def run_api(car, mock=False):
 
     @api.route("/capture/start")
     async def capture_start(req, resp):
+        out = req.params.get("out")
+        out = Path(out or "out")
         loop = asyncio.get_event_loop()
         await car.capturing.set(True)
-        loop.create_task(capture())
+        loop.create_task(capture(out))
         resp.media = {"value": True}
 
     @api.route("/capture/stop")
@@ -108,9 +109,8 @@ def run_api(car, mock=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--mock", action="store_true")
-    parser.add_argument("--output", "-o", type=str)
     args = parser.parse_args()
-    car = Car(mock=args.mock, output=args.output)
+    car = Car(mock=args.mock)
     car.camera.start_preview()
     time.sleep(5)
     run_api(car)
