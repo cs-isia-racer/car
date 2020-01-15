@@ -45,7 +45,7 @@ class Car:
 
     def update_throttle(self, delta):
         self.throttle = max(MIN_THROTTLE, min(self.throttle + delta, MAX_THROTTLE))
-        self.pwmWrite(self.THROTTLE_PIN, int(90 + 30*self.throttle))
+        self.pwmWrite(self.THROTTLE_PIN, int(90 + 30 * self.throttle))
 
 
 class AtomicBool:
