@@ -22,24 +22,37 @@ class AbstractClient:
         raise NotImplementedError
 
     def on_message(self, message):
+        msg = json.loads(message)
+        if 'state' not in msg:
+            return
+
         self._counter += 1
         if self._counter % self.every == 0:
-            raw_image = base64.b64decode(json.loads(message)['image'])
+            raw_image = base64.b64decode(msg['state']['image'])
             image = cv2.imdecode(np.frombuffer(raw_image, np.uint8), -1)
 
-            angle = self.process(image)
+            angle, img = self.process(image)
 
-            self.session.get(f"http://{self.host}/steer/set/{angle}")
+            payload = {
+                'command': {
+                    'steering': angle
+                }
+            }
+
+            if img is not None:
+                payload['data'] = {'image': img}
+
+            self.ws.send(json.dumps(payload))
             print(f"Sent angle command: {angle}")
 
     def start(self):
         self.session.get(f"http://{self.host}/stream/start")
         websocket.enableTrace(True)
-        ws = websocket.WebSocketApp(
+        self.ws = websocket.WebSocketApp(
             f'ws://{self.host}/ws',
             on_message=self.on_message,
             on_error=lambda ws, msg: print("error", msg),
             on_close=lambda ws: print("closed"),
         )
 
-        ws.run_forever()
+        self.ws.run_forever()

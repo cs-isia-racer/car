@@ -22,9 +22,6 @@
             #steering {
                 display: inline;
             }
-            #throttle {
-                display: inline;
-            }
         </style>
 
     </head>
@@ -35,10 +32,11 @@
         <br />
         <ul id="car-data">
             <li>steering: <div id="steering"></div></li>
-            <li>throttle: <div id="throttle"></div></li>
         </ul>
         <button id="stream-btn">Start streaming video</button>
         <button id="capture-btn">Start capturing video</button>
+        <h2>Processed by IA</h2>
+        <img id="video-ai" width=640, height=640, alt="image not available">
     </body>
 
 
@@ -51,28 +49,38 @@
 
         const ws = new WebSocket(`ws://${document.location.host}/ws`);
 
+        let lastSteering = 0;
+
         ws.onmessage = event => {
             const msg = JSON.parse(event.data);
-            document.getElementById("throttle").innerHTML = msg.throttle;
-            document.getElementById("steering").innerHTML = msg.steering;
-            document.getElementById("video-stream").src = `data:image/jpg;base64, ${msg.image}`;
-        }
+
+            if (msg.state) {
+                const {state: { image, steering }} = JSON.parse(event.data);
+
+                lastSteering = steering;
+                document.getElementById("steering").innerHTML = steering;
+                // TODO remove magic number 30 here (supposed to be max angle of rotation for servo on the car)
+                arrow.style.transform = `rotate(${30*steering}deg)`;
+                document.getElementById("video-stream").src = `data:image/jpg;base64, ${image}`;
+            }
+
+            if (msg.data) {
+                console.log('Received data', msg.data);
+                document.getElementById("video-ai").src = `data:image/jpg;base64, ${msg.data.image}`;
+            }
+
+        };
 
         const request = async route => {
             return (await fetch(route)).json()
         };
 
-        const updateThrottle = async throttle => {
-            // TODO: use it
-            const { value } = await request(`/throttle/${throttle}`);
-            return value;
-        };
-
-        const updateSteering = async delta => {
-            const { value } = await request(`/steer/${delta}`);
-            // TODO remove magic number 25 here (supposed to be max angle of rotation for servo on the car)
-            arrow.style.transform = `rotate(${25*value}deg)`;
-            return value;
+        const updateSteering = delta => {
+            ws.send(JSON.stringify({
+                command: {
+                    steering: lastSteering + delta
+                }
+            }))
         };
 
         const handleCapture = capturing => {
@@ -81,7 +89,6 @@
         };
 
         const steeringQuantum = 0.2;
-        const throttleQuantum = 0.05;
 
         (async () => {
             let capturing = (await request("/capture")).value;
@@ -89,13 +96,9 @@
 
             document.addEventListener("keydown", async ev => {
                 if (ev.code === 'ArrowLeft') {
-                    await updateSteering(-steeringQuantum);
+                    updateSteering(-steeringQuantum);
                 } else if (ev.code === 'ArrowRight') {
-                    await updateSteering(steeringQuantum);
-                } else if (ev.code === 'ArrowUp') {
-                await updateThrottle(throttleQuantum);
-                } else if (ev.code === 'ArrowDown') {
-                    await updateThrottle(-throttleQuantum);
+                    updateSteering(steeringQuantum);
                 }
         });
 

@@ -50,9 +50,9 @@ def compute_angle(lines):
 class HoughClient(AbstractClient):
     def process(self, image):
         try:
-            return compute_angle(compute_lines(image))
+            return compute_angle(compute_lines(image)), None
         except:
-            return 0
+            return 0, None
 
 
 if __name__ == '__main__':

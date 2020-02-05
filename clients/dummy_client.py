@@ -6,7 +6,7 @@ class DummyClient(AbstractClient):
     def process(self, image):
         global last
         last *= -1
-        return last
+        return last, None
 
 
 if __name__ == '__main__':
