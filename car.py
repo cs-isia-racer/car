@@ -44,7 +44,10 @@ class Car:
     async def update_steering(self, delta):
         # FIXME there could be race conditions here
         steering = await self.steering.get()
-        await self.steering.set(max(MIN_STEERING, min(steering + delta, MAX_STEERING)))
+        return self.set_steering(steering + delta)
+
+    async def set_steering(self, steering):
+        await self.steering.set(max(MIN_STEERING, min(steering, MAX_STEERING)))
         self.pwmWrite(self.STEERING_PIN, int(135 + 30 * steering))
         return steering
 
@@ -138,6 +141,10 @@ def run_api(car):
     @api.route("/steer/{delta}")
     async def steer(req, resp, *, delta):
         resp.media = {"value": await car.update_steering(float(delta))}
+
+    @api.route("/steer/set/{steering}")
+    async def steer(req, resp, *, steering):
+        resp.media = {"value": await car.set_steering(float(steering))}
 
     @api.route("/capture")
     async def capture_get(req, resp):
