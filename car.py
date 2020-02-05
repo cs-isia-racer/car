@@ -44,7 +44,7 @@ class Car:
     async def update_steering(self, delta):
         # FIXME there could be race conditions here
         steering = await self.steering.get()
-        return self.set_steering(steering + delta)
+        return await self.set_steering(steering + delta)
 
     async def set_steering(self, steering):
         await self.steering.set(max(MIN_STEERING, min(steering, MAX_STEERING)))

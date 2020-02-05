@@ -7,6 +7,7 @@ from clients.abstract_client import AbstractClient
 
 # https://stackoverflow.com/questions/45322630/how-to-detect-lines-in-opencv
 def compute_lines(img):
+    img = img[122:,:]
     gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
     kernel_size = 5
@@ -18,8 +19,8 @@ def compute_lines(img):
 
     rho = 1  # distance resolution in pixels of the Hough grid
     theta = np.pi / 180  # angular resolution in radians of the Hough grid
-    threshold = 120  # minimum number of votes (intersections in Hough grid cell)
-    min_line_length = 100  # minimum number of pixels making up a line
+    threshold = 60  # minimum number of votes (intersections in Hough grid cell)
+    min_line_length = 70  # minimum number of pixels making up a line
     max_line_gap = 10  # maximum gap in pixels between connectable line segments
 
     # Run Hough on edge detected image
@@ -29,6 +30,7 @@ def compute_lines(img):
 
 
 def compute_angle(lines):
+    print("lines", lines)
     # Angle between -30 and 30 (-1 and 1)
     angles = []
     for line in lines:
@@ -47,9 +49,12 @@ def compute_angle(lines):
 
 class HoughClient(AbstractClient):
     def process(self, image):
-        return compute_angle(compute_lines(image))
+        try:
+            return compute_angle(compute_lines(image))
+        except:
+            return 0
 
 
 if __name__ == '__main__':
     import sys
-    HoughClient(sys.argv[1]).start()
+    HoughClient(sys.argv[1], rate=0.2).start()
