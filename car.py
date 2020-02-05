@@ -41,22 +41,10 @@ class Car:
 
         self.pwmWrite = wiringpi.pwmWrite
 
-    async def update_steering(self, delta):
-        # FIXME there could be race conditions here
-        steering = await self.steering.get()
-        return await self.set_steering(steering + delta)
-
     async def set_steering(self, steering):
         await self.steering.set(max(MIN_STEERING, min(steering, MAX_STEERING)))
         self.pwmWrite(self.STEERING_PIN, int(135 + 30 * steering))
         return steering
-
-    async def update_throttle(self, delta):
-        # FIXME there could be race conditions here
-        throttle = await self.throttle.get()
-        await self.throttle.set(max(MIN_THROTTLE, min(throttle + delta, MAX_THROTTLE)))
-        self.pwmWrite(self.THROTTLE_PIN, int(90 + 30 * throttle))
-        return throttle
 
 
 class Atomic:
@@ -120,34 +108,54 @@ def run_api(car):
     @api.route("/ws", websocket=True)
     async def websocket(ws):
         await ws.accept()
-        try:
-            while True:
-                await asyncio.sleep(1 / 60)
-                throttle, steering, image = await asyncio.gather(
-                    car.throttle.get(), car.steering.get(), dashboard_stream.read(),
-                )
-                await ws.send_json(
-                    {
-                        "throttle": throttle,
-                        "steering": steering,
-                        "image": base64.b64encode(image).decode(),
-                    }
-                )
-        except Exception as err:
-            print(f"closing connection after error: {err}")
-        await ws.close()
 
-    @api.route("/throttle/{value}")
-    async def throttle(req, resp, *, value):
-        resp.media = {"value": await car.update_throttle(float(value))}
+        async def send_data():
+            try:
+                while True:
+                    await asyncio.sleep(1 / 60)
+                    throttle, steering, image = await asyncio.gather(
+                        car.throttle.get(), car.steering.get(), dashboard_stream.read(),
+                    )
+                    await ws.send_json(
+                        {
+                            "state": {
+                                "throttle": throttle,
+                                "steering": steering,
+                                "image": base64.b64encode(image).decode(),
+                            }
+                        }
+                    )
+            except Exception as err:
+                print(f"closing connection after error: {err}")
+            try:
+                await ws.close()
+            except Exception:
+                pass
 
-    @api.route("/steer/{delta}")
-    async def steer(req, resp, *, delta):
-        resp.media = {"value": await car.update_steering(float(delta))}
+        async def receive_data():
+            try:
+                while True:
+                    await asyncio.sleep(1 / 60)
+                    msg = await ws.receive_json()
+                    if "command" in msg:
+                        command = msg["command"]
+                        print(f"received command: {command}")
+                        await car.set_steering(
+                            command.get("steering", MIN_STEERING)
+                        )
+            except Exception as err:
+                print(f"closing connection after error: {err}")
+            try:
+                await ws.close()
+            except Exception:
+                pass
 
-    @api.route("/steer/set/{steering}")
-    async def steer(req, resp, *, steering):
-        resp.media = {"value": await car.set_steering(float(steering))}
+        loop = asyncio.get_event_loop()
+        loop.create_task(send_data())
+        loop.create_task(receive_data())
+
+        while True:
+            await asyncio.sleep(1 / 60)
 
     @api.route("/capture")
     async def capture_get(req, resp):
