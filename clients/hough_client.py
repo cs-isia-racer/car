@@ -7,11 +7,11 @@ from clients.abstract_client import AbstractClient
 
 # https://stackoverflow.com/questions/45322630/how-to-detect-lines-in-opencv
 def compute_lines(img):
-    img = img[122:,:]
-    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    img = img[122:, :]
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     kernel_size = 5
-    blur_gray = cv2.GaussianBlur(gray,(kernel_size, kernel_size),0)
+    blur_gray = cv2.GaussianBlur(gray, (kernel_size, kernel_size), 0)
 
     low_threshold = 50
     high_threshold = 150
@@ -25,8 +25,9 @@ def compute_lines(img):
 
     # Run Hough on edge detected image
     # Output "lines" is an array containing endpoints of detected line segments
-    return cv2.HoughLinesP(edges, rho, theta, threshold, np.array([]),
-                           min_line_length, max_line_gap)
+    return cv2.HoughLinesP(
+        edges, rho, theta, threshold, np.array([]), min_line_length, max_line_gap
+    )
 
 
 def compute_angle(lines):
@@ -37,7 +38,7 @@ def compute_angle(lines):
         for x1, y1, x2, y2 in line:
             angles.append(math.atan((x2 - x1) / (y2 - y1)))
 
-    a = -180/math.pi * np.mean(angles)
+    a = -180 / math.pi * np.mean(angles)
 
     if a < -30:
         a = -30
@@ -54,8 +55,8 @@ class HoughClient(AbstractClient):
 
             line_image = np.copy(image) * 0  # creating a blank to draw lines on
             for line in lines:
-                for x1,y1,x2,y2 in line:
-                    cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),5)
+                for x1, y1, x2, y2 in line:
+                    cv2.line(line_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
 
             lines_edges = cv2.addWeighted(image, 0.8, line_image, 1, 0)
 
@@ -64,5 +65,5 @@ class HoughClient(AbstractClient):
             return 0, None
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     HoughClient.bootstrap(0.2)

@@ -23,24 +23,20 @@ class AbstractClient:
 
     def on_message(self, message):
         msg = json.loads(message)
-        if 'state' not in msg:
+        if "state" not in msg:
             return
 
         self._counter += 1
         if self._counter % self.every == 0:
-            raw_image = base64.b64decode(msg['state']['image'])
+            raw_image = base64.b64decode(msg["state"]["image"])
             image = cv2.imdecode(np.frombuffer(raw_image, np.uint8), -1)
 
             angle, img = self.process(image)
 
-            payload = {
-                'command': {
-                    'steering': angle
-                }
-            }
+            payload = {"command": {"steering": angle}}
 
             if img is not None:
-                payload['data'] = {'image': img}
+                payload["data"] = {"image": img}
 
             self.ws.send(json.dumps(payload))
             print(f"Sent angle command: {angle}")
@@ -49,7 +45,7 @@ class AbstractClient:
         self.session.get(f"http://{self.host}/stream/start")
         websocket.enableTrace(True)
         self.ws = websocket.WebSocketApp(
-            f'ws://{self.host}/ws',
+            f"ws://{self.host}/ws",
             on_message=self.on_message,
             on_error=lambda ws, msg: print("error", msg),
             on_close=lambda ws: print("closed"),
@@ -60,4 +56,5 @@ class AbstractClient:
     @classmethod
     def bootstrap(cls, rate=0.05):
         import sys
+
         cls(sys.argv[1], rate=rate).start()
