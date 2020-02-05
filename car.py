@@ -120,18 +120,21 @@ def run_api(car):
     @api.route("/ws", websocket=True)
     async def websocket(ws):
         await ws.accept()
-        while True:
-            await asyncio.sleep(1 / 60)
-            throttle, steering, image = await asyncio.gather(
-                car.throttle.get(), car.steering.get(), dashboard_stream.read(),
-            )
-            await ws.send_json(
-                {
-                    "throttle": throttle,
-                    "steering": steering,
-                    "image": base64.b64encode(image).decode(),
-                }
-            )
+        try:
+            while True:
+                await asyncio.sleep(1 / 60)
+                throttle, steering, image = await asyncio.gather(
+                    car.throttle.get(), car.steering.get(), dashboard_stream.read(),
+                )
+                await ws.send_json(
+                    {
+                        "throttle": throttle,
+                        "steering": steering,
+                        "image": base64.b64encode(image).decode(),
+                    }
+                )
+        except Exception as err:
+            print(f"closing connection after error: {err}")
         await ws.close()
 
     @api.route("/throttle/{value}")

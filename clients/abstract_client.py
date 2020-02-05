@@ -1,7 +1,10 @@
-import websocket
-import requests
 import json
 import base64
+
+import numpy as np
+import cv2
+import websocket
+import requests
 
 
 class AbstractClient:
@@ -21,7 +24,9 @@ class AbstractClient:
     def on_message(self, message):
         self._counter += 1
         if self._counter % self.every == 0:
-            image = base64.b64decode(json.loads(message)['image'])
+            raw_image = base64.b64decode(json.loads(message)['image'])
+            image = cv2.imdecode(np.frombuffer(raw_image, np.uint8), -1)
+
             angle = self.process(image)
 
             self.session.get(f"http://{self.host}/steer/set/{angle}")
