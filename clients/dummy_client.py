@@ -10,5 +10,4 @@ class DummyClient(AbstractClient):
 
 
 if __name__ == '__main__':
-    import sys
-    DummyClient(sys.argv[1]).start()
+    DummyClient.bootstrap(0.2)

@@ -8,7 +8,7 @@ import requests
 
 
 class AbstractClient:
-    def __init__(self, host, rate=0.05):
+    def __init__(self, host, rate):
         if rate is None or rate == 0:
             self.every = 1
         else:
@@ -56,3 +56,8 @@ class AbstractClient:
         )
 
         self.ws.run_forever()
+
+    @classmethod
+    def bootstrap(cls, rate=0.05):
+        import sys
+        cls(sys.argv[1], rate=rate).start()
