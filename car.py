@@ -177,7 +177,7 @@ def run_api(car):
             resp.media = {"error": "already capturing"}
             return
         out = req.params.get("out")
-        out = Path(out or "out")
+        out = Path(out or f"out.{time.time()}")
         if out.exists():
             resp.status_code = api.status_codes.HTTP_400
             resp.media = {"error": "can't start capture into existing folder"}
