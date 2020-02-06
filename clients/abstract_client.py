@@ -43,7 +43,6 @@ class AbstractClient:
 
     def start(self):
         self.session.get(f"http://{self.host}/stream/start")
-        websocket.enableTrace(True)
         self.ws = websocket.WebSocketApp(
             f"ws://{self.host}/ws",
             on_message=self.on_message,
@@ -54,7 +53,7 @@ class AbstractClient:
         self.ws.run_forever()
 
     def cv2encode(self, img):
-        return base64.b64encode(cv2.imencode(".JPEG", img)[1])
+        return base64.b64encode(cv2.imencode(".JPEG", img)[1]).decode()
 
     @classmethod
     def bootstrap(cls, rate=0.05):

@@ -7,7 +7,6 @@ from clients.abstract_client import AbstractClient
 
 # https://stackoverflow.com/questions/45322630/how-to-detect-lines-in-opencv
 def compute_lines(img):
-    img = img[122:, :]
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     kernel_size = 5
@@ -31,7 +30,6 @@ def compute_lines(img):
 
 
 def compute_angle(lines):
-    print("lines", lines)
     # Angle between -30 and 30 (-1 and 1)
     angles = []
     for line in lines:
@@ -51,6 +49,7 @@ def compute_angle(lines):
 class HoughClient(AbstractClient):
     def process(self, image):
         try:
+            image = image[122:, :]
             lines = compute_lines(image)
 
             line_image = np.copy(image) * 0  # creating a blank to draw lines on

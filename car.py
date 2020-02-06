@@ -16,13 +16,13 @@ class Car:
     STEERING_PIN = 13
     THROTTLE_PIN = 18
 
-    def __init__(self, mock_cam=False, mock_pwm=False):
+    def __init__(self, mock_cam_dir, mock_pwm):
         # Steering goes from -90 to 90
         self.steering = Atomic(0)
         self.throttle = Atomic(0)
         self.capturing = Atomic(False)
 
-        if mock_cam:
+        if mock_cam_dir is not None:
             from camera_mock import PiCamera
         else:
             from picamera import PiCamera
@@ -32,6 +32,7 @@ class Car:
             import wiringpi
 
         self.camera = PiCamera(resolution=(224, 224), framerate=30)
+        self.camera.mock_dir = mock_cam_dir
 
         for pin in [self.STEERING_PIN, self.THROTTLE_PIN]:
             wiringpi.wiringPiSetupGpio()
@@ -91,10 +92,10 @@ async def safe_ws_loop(ws, fn, *args, **kwargs):
     except Exception:
         pass
 
-def broadcast(clients, message, sender_id):
+async def broadcast(clients, message, sender_id):
     for id, client in clients.items():
         if id != sender_id:
-            client.send_json(message)
+            await client.send_json(message)
 
 def run_api(car):
     api = responder.API()
@@ -129,6 +130,7 @@ def run_api(car):
 
         ws.id = uuid.uuid4()
         clients[ws.id] = ws
+        print(f"New client connected ! id: {ws.id}")
 
         async def send_data():
             async def process_frames():
@@ -146,8 +148,11 @@ def run_api(car):
                     }
                 )
 
-            await safe_ws_loop(ws, process_message)
-            clients.pop(ws.id)
+            await safe_ws_loop(ws, process_frames)
+            try:
+                clients.pop(ws.id)
+            except KeyError:
+                pass
 
         async def receive_data():
             async def process_messages():
@@ -159,11 +164,15 @@ def run_api(car):
                         command.get("steering", MIN_STEERING)
                     )
                 if "data" in msg:
+                    print(len(clients))
                     print("received image from model, it will be broadcasted")
-                    broadcast(clients, msg, ws.id)
+                    await broadcast(clients, msg, ws.id)
 
             await safe_ws_loop(ws, process_messages)
-            clients.pop(ws.id)
+            try:
+                clients.pop(ws.id)
+            except KeyError:
+                pass
 
         loop = asyncio.get_event_loop()
         loop.create_task(send_data())
@@ -224,11 +233,11 @@ def run_api(car):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mock-cam", action="store_true")
+    parser.add_argument("--mock-cam-dir", default=None, type=str, help='Directory that contains images to return to mock the camera')
     parser.add_argument("--mock-pwm", action="store_true")
     args = parser.parse_args()
-    car = Car(mock_cam=args.mock_cam, mock_pwm=args.mock_pwm)
+    car = Car(args.mock_cam_dir, args.mock_pwm)
     car.camera.start_preview()
-    if not args.mock_cam:
+    if not args.mock_cam_dir:
         time.sleep(5)
     run_api(car)
