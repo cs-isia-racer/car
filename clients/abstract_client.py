@@ -53,6 +53,9 @@ class AbstractClient:
 
         self.ws.run_forever()
 
+    def cv2encode(self, img):
+        return base64.b64encode(cv2.imencode(".JPEG", img)[1])
+
     @classmethod
     def bootstrap(cls, rate=0.05):
         import sys
