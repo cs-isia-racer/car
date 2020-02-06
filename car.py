@@ -3,6 +3,7 @@ import asyncio
 import base64
 import io
 import time
+import uuid
 from pathlib import Path
 
 import responder
@@ -90,10 +91,17 @@ async def safe_ws_loop(ws, fn, *args, **kwargs):
     except Exception:
         pass
 
+def broadcast(clients, message, sender_id):
+    for id, client in clients.items():
+        if id != sender_id:
+            client.send_json(message)
+
 def run_api(car):
     api = responder.API()
     dashboard_stream = AtomicStream(io.BytesIO())
     capture_stream = AtomicStream(io.BytesIO())
+
+    clients = {}
 
     async def run_stream():
         print("Starting stream")
@@ -119,8 +127,10 @@ def run_api(car):
     async def websocket(ws):
         await ws.accept()
 
-        async def send_data():
+        ws.id = uuid.uuid4()
+        clients[ws.id] = ws
 
+        async def send_data():
             async def process_frames():
                 await asyncio.sleep(1 / 60)
                 throttle, steering, image = await asyncio.gather(
@@ -136,12 +146,11 @@ def run_api(car):
                     }
                 )
 
-            safe_ws_loop(ws, process_message)
+            await safe_ws_loop(ws, process_message)
+            clients.pop(ws.id)
 
         async def receive_data():
-
             async def process_messages():
-                await asyncio.sleep(1 / 60)
                 msg = await ws.receive_json()
                 if "command" in msg:
                     command = msg["command"]
@@ -149,8 +158,12 @@ def run_api(car):
                     await car.set_steering(
                         command.get("steering", MIN_STEERING)
                     )
+                if "data" in msg:
+                    print("received image from model, it will be broadcasted")
+                    broadcast(clients, msg, ws.id)
 
-            safe_ws_loop(ws, process_messages)
+            await safe_ws_loop(ws, process_messages)
+            clients.pop(ws.id)
 
         loop = asyncio.get_event_loop()
         loop.create_task(send_data())

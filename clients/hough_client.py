@@ -60,7 +60,7 @@ class HoughClient(AbstractClient):
 
             lines_edges = cv2.addWeighted(image, 0.8, line_image, 1, 0)
 
-            return compute_angle(lines), lines_edges
+            return compute_angle(lines), self.cv2encode(lines_edges)
         except:
             return 0, None
 
