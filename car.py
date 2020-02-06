@@ -79,6 +79,16 @@ class AtomicStream:
             res = self.stream.getvalue()
         return res
 
+async def safe_ws_loop(ws, fn, *args, **kwargs):
+    try:
+        while True:
+            await fn()
+    except Exception as err:
+        print(f"closing connection after error: {err}")
+    try:
+        await ws.close()
+    except Exception:
+        pass
 
 def run_api(car):
     api = responder.API()
@@ -110,45 +120,37 @@ def run_api(car):
         await ws.accept()
 
         async def send_data():
-            try:
-                while True:
-                    await asyncio.sleep(1 / 60)
-                    throttle, steering, image = await asyncio.gather(
-                        car.throttle.get(), car.steering.get(), dashboard_stream.read(),
-                    )
-                    await ws.send_json(
-                        {
-                            "state": {
-                                "throttle": throttle,
-                                "steering": steering,
-                                "image": base64.b64encode(image).decode(),
-                            }
+
+            async def process_frames():
+                await asyncio.sleep(1 / 60)
+                throttle, steering, image = await asyncio.gather(
+                    car.throttle.get(), car.steering.get(), dashboard_stream.read(),
+                )
+                await ws.send_json(
+                    {
+                        "state": {
+                            "throttle": throttle,
+                            "steering": steering,
+                            "image": base64.b64encode(image).decode(),
                         }
-                    )
-            except Exception as err:
-                print(f"closing connection after error: {err}")
-            try:
-                await ws.close()
-            except Exception:
-                pass
+                    }
+                )
+
+            safe_ws_loop(ws, process_message)
 
         async def receive_data():
-            try:
-                while True:
-                    await asyncio.sleep(1 / 60)
-                    msg = await ws.receive_json()
-                    if "command" in msg:
-                        command = msg["command"]
-                        print(f"received command: {command}")
-                        await car.set_steering(
-                            command.get("steering", MIN_STEERING)
-                        )
-            except Exception as err:
-                print(f"closing connection after error: {err}")
-            try:
-                await ws.close()
-            except Exception:
-                pass
+
+            async def process_messages():
+                await asyncio.sleep(1 / 60)
+                msg = await ws.receive_json()
+                if "command" in msg:
+                    command = msg["command"]
+                    print(f"received command: {command}")
+                    await car.set_steering(
+                        command.get("steering", MIN_STEERING)
+                    )
+
+            safe_ws_loop(ws, process_messages)
 
         loop = asyncio.get_event_loop()
         loop.create_task(send_data())
