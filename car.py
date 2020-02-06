@@ -151,7 +151,6 @@ def run_api(car):
 
         async def receive_data():
             async def process_messages():
-                await asyncio.sleep(1 / 60)
                 msg = await ws.receive_json()
                 if "command" in msg:
                     command = msg["command"]
