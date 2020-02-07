@@ -81,7 +81,32 @@ class AtomicStream:
             res = self.stream.getvalue()
         return res
 
-async def safe_ws_loop(ws, fn, *args, **kwargs):
+
+class WSRegistry:
+    def __init__(self):
+        self.clients = {}
+        self.lock = asyncio.Lock()
+
+    async def add(self, ws):
+        async with self.lock:
+            ws.id = uuid.uuid4()
+            self.clients[ws.id] = ws
+            print(f"New client connected ! id: {ws.id}")
+
+    async def remove(self, id):
+        async with self.lock:
+            if id in self.clients:
+                self.clients.pop(id)
+                print(f"client with id: {id} disconnected")
+
+    async def broadcast(self, message, sender=None):
+        async with self.lock:
+            for id, client in self.clients.items():
+                if sender is None or id != sender:
+                    await client.send_json(message)
+
+
+async def safe_ws_loop(ws, fn):
     try:
         while True:
             await fn()
@@ -92,20 +117,14 @@ async def safe_ws_loop(ws, fn, *args, **kwargs):
     except Exception:
         pass
 
-async def broadcast(clients, message, sender_id):
-    for id, client in clients.items():
-        if id != sender_id:
-            await client.send_json(message)
 
 def run_api(car):
     api = responder.API()
-    dashboard_stream = AtomicStream(io.BytesIO())
     capture_stream = AtomicStream(io.BytesIO())
 
-    clients = {}
+    registry = WSRegistry()
 
     async def run_stream():
-        print("Starting stream")
         stream = io.BytesIO()
         for _ in car.camera.capture_continuous(
             stream, format="jpeg", use_video_port=True
@@ -113,73 +132,54 @@ def run_api(car):
             await asyncio.sleep(1 / 60)
             stream.truncate()
             stream.seek(0)
-            value = stream.getvalue()
-            await dashboard_stream.write(value)
-            await capture_stream.write(value)
+
+            image = stream.getvalue()
+            throttle, steering = await asyncio.gather(
+                car.throttle.get(), car.steering.get()
+            )
+
+            await registry.broadcast(
+                {
+                    "state": {
+                        "throttle": throttle,
+                        "steering": steering,
+                        "image": base64.b64encode(image).decode(),
+                    }
+                }
+            )
+
+            if await car.capturing.get():
+                await capture_stream.write(image)
+
         print("Stopping stream")
 
-    @api.route("/stream/start")
-    async def stream_start(req, resp):
+    @api.on_event("startup")
+    def start_stream():
         loop = asyncio.get_event_loop()
         loop.create_task(run_stream())
-        resp.media = {"value": True}
+        print("Started video stream")
 
     @api.route("/ws", websocket=True)
     async def websocket(ws):
         await ws.accept()
 
-        ws.id = uuid.uuid4()
-        clients[ws.id] = ws
-        print(f"New client connected ! id: {ws.id}")
+        await registry.add(ws)
 
-        async def send_data():
-            async def process_frames():
-                await asyncio.sleep(1 / 60)
-                throttle, steering, image = await asyncio.gather(
-                    car.throttle.get(), car.steering.get(), dashboard_stream.read(),
-                )
-                await ws.send_json(
-                    {
-                        "state": {
-                            "throttle": throttle,
-                            "steering": steering,
-                            "image": base64.b64encode(image).decode(),
-                        }
-                    }
-                )
-
-            await safe_ws_loop(ws, process_frames)
-            try:
-                clients.pop(ws.id)
-            except KeyError:
-                pass
+        async def process_messages():
+            msg = await ws.receive_json()
+            if "command" in msg:
+                command = msg["command"]
+                print(f"received command: {command}")
+                await car.set_steering(command.get("steering", MIN_STEERING))
+            if "data" in msg:
+                print("received image from model, it will be broadcasted")
+                await registry.broadcast(msg, ws.id)
 
         async def receive_data():
-            async def process_messages():
-                msg = await ws.receive_json()
-                if "command" in msg:
-                    command = msg["command"]
-                    print(f"received command: {command}")
-                    await car.set_steering(
-                        command.get("steering", MIN_STEERING)
-                    )
-                if "data" in msg:
-                    print(len(clients))
-                    print("received image from model, it will be broadcasted")
-                    await broadcast(clients, msg, ws.id)
-
             await safe_ws_loop(ws, process_messages)
-            try:
-                clients.pop(ws.id)
-            except KeyError:
-                pass
+            await registry.remove(ws.id)
 
-        loop = asyncio.get_event_loop()
-        loop.create_task(send_data())
-        loop.create_task(receive_data())
-
-        while True:
-            await asyncio.sleep(1 / 60)
+        await receive_data()
 
     @api.route("/capture")
     async def capture_get(req, resp):
@@ -233,7 +233,12 @@ def run_api(car):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mock-cam-dir", default=None, type=str, help='Directory that contains images to return to mock the camera')
+    parser.add_argument(
+        "--mock-cam-dir",
+        default=None,
+        type=str,
+        help="Directory that contains images to return to mock the camera",
+    )
     parser.add_argument("--mock-pwm", action="store_true")
     args = parser.parse_args()
     car = Car(args.mock_cam_dir, args.mock_pwm)

@@ -21,7 +21,7 @@ class PiCamera:
             if images_paths:
                 images = [
                     open(path, "rb").read()
-                    for path in sorted(images_paths)
+                    for path in sorted(images_paths, key=lambda x: int(x.name.split('_')[1]))
                 ]
 
         for raw in itertools.cycle(images):

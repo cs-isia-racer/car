@@ -33,7 +33,6 @@
         <ul id="car-data">
             <li>steering: <div id="steering"></div></li>
         </ul>
-        <button id="stream-btn">Start streaming video</button>
         <button id="capture-btn">Start capturing video</button>
         <h2>Processed by IA</h2>
         <img id="video-ai" height=420, alt="image not available">
@@ -43,10 +42,6 @@
     <script>
         const arrow = document.getElementById("arrow");
         const button = document.getElementById("capture-btn");
-        document.getElementById("stream-btn").addEventListener("click", () => {
-            fetch("/stream/start");
-        });
-
         const ws = new WebSocket(`ws://${document.location.host}/ws`);
 
         let lastSteering = 0;
