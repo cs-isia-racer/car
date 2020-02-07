@@ -1,4 +1,6 @@
 import time
+import itertools
+from pathlib import Path
 
 class PiCamera:
 
@@ -10,9 +12,19 @@ class PiCamera:
         pass
 
     def capture_continuous(self, output, format=None, use_video_port=False):
-        i = 0
-        while True:
+        mock_dir = Path(self.mock_dir).expanduser()
+
+        images = ["fake image"]
+        if mock_dir.exists() and mock_dir.is_dir():
+            images_paths = mock_dir.glob("*.jpg")
+
+            if images_paths:
+                images = [
+                    open(path, "rb").read()
+                    for path in sorted(images_paths)
+                ]
+
+        for raw in itertools.cycle(images):
             time.sleep(1 / self.framerate)
-            output.write(b"capture_id: %d" % i)
+            output.write(raw)
             yield output
-            i += 1
