@@ -1,1 +1,6 @@
-responder
+black==19.10b0
+numpy==1.18.1
+opencv-python==4.2.0.32
+responder==2.0.5
+websocket-client==0.57.0
+websockets==8.1
