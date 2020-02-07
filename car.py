@@ -81,6 +81,7 @@ class AtomicStream:
             res = self.stream.getvalue()
         return res
 
+
 class WSRegistry:
     def __init__(self):
         self.clients = {}
@@ -116,6 +117,7 @@ async def safe_ws_loop(ws, fn):
     except Exception:
         pass
 
+
 def run_api(car):
     api = responder.API()
     capture_stream = AtomicStream(io.BytesIO())
@@ -136,21 +138,23 @@ def run_api(car):
                 car.throttle.get(), car.steering.get()
             )
 
-            await registry.broadcast({
-                "state": {
-                    "throttle": throttle,
-                    "steering": steering,
-                    "image": base64.b64encode(image).decode(),
+            await registry.broadcast(
+                {
+                    "state": {
+                        "throttle": throttle,
+                        "steering": steering,
+                        "image": base64.b64encode(image).decode(),
+                    }
                 }
-            })
+            )
 
             if await car.capturing.get():
                 await capture_stream.write(image)
 
         print("Stopping stream")
 
-    @api.on_event('startup')
-    def start_stream(): 
+    @api.on_event("startup")
+    def start_stream():
         loop = asyncio.get_event_loop()
         loop.create_task(run_stream())
         print("Started video stream")
@@ -166,9 +170,7 @@ def run_api(car):
             if "command" in msg:
                 command = msg["command"]
                 print(f"received command: {command}")
-                await car.set_steering(
-                    command.get("steering", MIN_STEERING)
-                )
+                await car.set_steering(command.get("steering", MIN_STEERING))
             if "data" in msg:
                 print("received image from model, it will be broadcasted")
                 await registry.broadcast(msg, ws.id)
@@ -231,7 +233,12 @@ def run_api(car):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mock-cam-dir", default=None, type=str, help='Directory that contains images to return to mock the camera')
+    parser.add_argument(
+        "--mock-cam-dir",
+        default=None,
+        type=str,
+        help="Directory that contains images to return to mock the camera",
+    )
     parser.add_argument("--mock-pwm", action="store_true")
     args = parser.parse_args()
     car = Car(args.mock_cam_dir, args.mock_pwm)
