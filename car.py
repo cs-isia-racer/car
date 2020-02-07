@@ -23,11 +23,11 @@ class Car:
         self.capturing = Atomic(False)
 
         if mock_cam_dir is not None:
-            from camera_mock import PiCamera
+            from mocks.camera_mock import PiCamera
         else:
             from picamera import PiCamera
         if mock_pwm:
-            import wiringpi_mock as wiringpi
+            import mocks.wiringpi_mock as wiringpi
         else:
             import wiringpi
 
