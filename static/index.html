@@ -9,6 +9,18 @@
                 width: 200px;
             }
 
+            .row {
+                display: flex;
+                flex-direction: row;
+                align-items: flex-end;
+                justify-content: space-around;
+            }
+
+            #videos > * {
+                width: 50%;
+                border: 2px solid black;
+            }
+
             #capture-btn {
                 padding: 10px;
                 color: white;
@@ -27,15 +39,23 @@
     </head>
     <body>
         <h1>Dashboard</h1>
-        <img src="arrow.png" id="arrow" alt="">
-        <img id="video-stream" width=640, height=640, alt="image not available">
-        <br />
-        <ul id="car-data">
-            <li>steering: <div id="steering"></div></li>
-        </ul>
         <button id="capture-btn">Start capturing video</button>
-        <h2>Processed by IA</h2>
-        <img id="video-ai" height=420, alt="image not available">
+        <div class="row">
+            <h2>Camera View</h2>
+            <h2>Processed by IA</h2>
+        </div>
+        <div id="videos" class="row">
+            <img id="video-stream" alt="image not available">
+            <img id="video-ai" alt="image not available">
+        </div>
+        <br />
+        <h2> Car data</h2>
+        <ul id="car-data">
+            <li>
+                steering: <div id="steering"></div>
+                <img src="arrow.png" id="arrow" alt="">
+            </li>
+        </ul>
     </body>
 
 
