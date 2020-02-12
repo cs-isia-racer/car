@@ -32,7 +32,8 @@ class Car:
             import wiringpi
 
         self.camera = PiCamera(resolution=(224, 224), framerate=30)
-        self.camera.mock_dir = mock_cam_dir
+        if mock_cam_dir is not None:
+            self.camera.mock_dir = mock_cam_dir
 
         for pin in [self.STEERING_PIN, self.THROTTLE_PIN]:
             wiringpi.wiringPiSetupGpio()

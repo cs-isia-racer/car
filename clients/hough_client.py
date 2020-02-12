@@ -48,20 +48,19 @@ def compute_angle(lines):
 
 class HoughClient(AbstractClient):
     def process(self, image):
-        try:
-            y_offset = 122
-            lines = compute_lines(image[y_offset:, :])
+        y_offset = 122
+        lines = compute_lines(image[y_offset:, :])
 
-            line_image = np.copy(image) * 0  # creating a blank to draw lines on
-            for line in lines:
-                for x1, y1, x2, y2 in line:
-                    cv2.line(line_image, (x1, y1+ y_offset), (x2, y2 + y_offset), (255, 0, 0), 5)
+        line_image = np.copy(image) * 0  # creating a blank to draw lines on
 
-            lines_edges = cv2.addWeighted(image, 0.8, line_image, 1, 0)
+        cv2.line(line_image, (0, y_offset), (224, y_offset), (0, 0, 255), 2)
+        for line in lines:
+            for x1, y1, x2, y2 in line:
+                cv2.line(line_image, (x1, y1+ y_offset), (x2, y2 + y_offset), (255, 0, 0), 5)
 
-            return compute_angle(lines), self.cv2encode(lines_edges)
-        except:
-            return 0, None
+        lines_edges = cv2.addWeighted(image, 0.8, line_image, 1, 0)
+
+        return compute_angle(lines), self.cv2encode(lines_edges)
 
 
 if __name__ == "__main__":

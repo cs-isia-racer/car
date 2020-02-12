@@ -31,7 +31,11 @@ class AbstractClient:
             raw_image = base64.b64decode(msg["state"]["image"])
             image = cv2.imdecode(np.frombuffer(raw_image, np.uint8), -1)
 
-            angle, img = self.process(image)
+            try:
+                angle, img = self.process(image)
+            except Exception as err:
+                print(f"Error: {err}")
+                angle, img = 0, None
 
             payload = {"command": {"steering": angle}}
 
@@ -51,6 +55,7 @@ class AbstractClient:
         )
 
         self.ws.run_forever()
+
 
     def cv2encode(self, img):
         return base64.b64encode(cv2.imencode(".JPEG", img)[1]).decode()
