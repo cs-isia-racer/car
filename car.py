@@ -195,7 +195,7 @@ def run_api(car):
             if not await car.capturing.get():
                 break
             out.mkdir(parents=True, exist_ok=True)
-            output_file = out / f"pic_{i}_{float(car.steering)}_{float(car.throttle)}.jpg"
+            output_file = out / f"pic_{i}_{float(await car.steering.get())}_{float(await car.throttle.get())}.jpg"
             posix_file_str = output_file.as_posix()
             with open(posix_file_str, "wb+") as f:
                 print(f"saving file {posix_file_str}")
