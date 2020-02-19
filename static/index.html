@@ -103,7 +103,7 @@
             button.style.background = capturing ? "red" : "green";
         };
 
-        const steeringQuantum = 0.8;
+        const steeringQuantum = 0.2;
 
         (async () => {
             let capturing = (await request("/capture")).value;
