@@ -7,14 +7,7 @@ from clients.abstract_client import AbstractClient
 
 # https://stackoverflow.com/questions/45322630/how-to-detect-lines-in-opencv
 def compute_lines(img):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    kernel_size = 5
-    blur_gray = cv2.GaussianBlur(gray, (kernel_size, kernel_size), 0)
-
-    low_threshold = 50
-    high_threshold = 150
-    edges = cv2.Canny(blur_gray, low_threshold, high_threshold)
+    edges = cv2.adaptiveThreshold(img,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,15,24)
 
     rho = 1  # distance resolution in pixels of the Hough grid
     theta = np.pi / 180  # angular resolution in radians of the Hough grid
