@@ -31,7 +31,7 @@ class Car:
         else:
             import wiringpi
 
-        self.camera = PiCamera(resolution=(800, 800), framerate=60)
+        self.camera = PiCamera(resolution=(50, 50), framerate=60)
         if mock_cam_dir is not None:
             self.camera.mock_dir = mock_cam_dir
 
