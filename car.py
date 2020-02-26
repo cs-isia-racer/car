@@ -31,7 +31,7 @@ class Car:
         else:
             import wiringpi
 
-        self.camera = PiCamera(resolution=(100, 100), framerate=100)
+        self.camera = PiCamera(resolution=(100, 100), framerate=60)
         if mock_cam_dir is not None:
             self.camera.mock_dir = mock_cam_dir
 
@@ -129,6 +129,7 @@ def run_api(car):
         stream = io.BytesIO()
 
         new = time.time_ns()
+        rates = []
         for _ in car.camera.capture_continuous(
             stream, format="jpeg", use_video_port=True
         ):
@@ -156,8 +157,11 @@ def run_api(car):
                 await capture_stream.write(image)
 
             new = time.time_ns()
-            rate = 1000000000 / (new - start)
-            print(rate)
+            rates.append(1000000000 / (new - start))
+
+            if len(rates) > 1000:
+                print("Average framerate:", sum(rates) / len(rates))
+                rates = []
 
         print("Stopping stream")
 
