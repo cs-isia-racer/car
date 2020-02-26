@@ -31,7 +31,7 @@ class Car:
         else:
             import wiringpi
 
-        self.camera = PiCamera(resolution=(1200, 1200), framerate=60)
+        self.camera = PiCamera(resolution=(224, 224), framerate=60)
         if mock_cam_dir is not None:
             self.camera.mock_dir = mock_cam_dir
 
@@ -159,7 +159,7 @@ def run_api(car):
             new = time.time_ns()
             rates.append(1000000000 / (new - start))
 
-            if len(rates) > 20:
+            if len(rates) > 200:
                 print("Average framerate:", sum(rates) / len(rates))
                 rates = []
 
