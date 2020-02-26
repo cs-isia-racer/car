@@ -159,7 +159,7 @@ def run_api(car):
             new = time.time_ns()
             rates.append(1000000000 / (new - start))
 
-            if len(rates) > 1000:
+            if len(rates) > 200:
                 print("Average framerate:", sum(rates) / len(rates))
                 rates = []
 
