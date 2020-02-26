@@ -128,7 +128,7 @@ def run_api(car):
     async def run_stream():
         stream = io.BytesIO()
 
-        new = time.clock_gettime_ns()
+        new = time.time_ns()
         for _ in car.camera.capture_continuous(
             stream, format="jpeg", use_video_port=True
         ):
@@ -155,7 +155,7 @@ def run_api(car):
             if await car.capturing.get():
                 await capture_stream.write(image)
 
-            new = time.clock_gettime_ns()
+            new = time.time_ns()
             rate = 1000000000 / (new - start)
             print(rate)
 
