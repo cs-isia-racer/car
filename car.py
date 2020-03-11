@@ -2,11 +2,15 @@ import argparse
 import asyncio
 import base64
 import io
+import websockets
 import time
 import uuid
+import json
 from pathlib import Path
 
-import responder
+from sanic import Sanic
+from sanic.response import json as sjson
+from sanic.websocket import WebSocketProtocol
 
 MIN_STEERING, MAX_STEERING = -1, 1
 MIN_THROTTLE, MAX_THROTTLE = -1, 1
@@ -104,7 +108,10 @@ class WSRegistry:
         async with self.lock:
             for id, client in self.clients.items():
                 if sender is None or id != sender:
-                    await client.send_json(message)
+                    try:
+                        await client.send(json.dumps(message))
+                    except websockets.exceptions.ConnectionClosedOK:
+                        pass
 
 
 async def safe_ws_loop(ws, fn):
@@ -120,9 +127,9 @@ async def safe_ws_loop(ws, fn):
 
 
 def run_api(car):
-    api = responder.API()
+    api = Sanic(__name__)
+    api.static('/static', './static')
     capture_stream = AtomicStream(io.BytesIO())
-    loop = asyncio.get_event_loop()
 
     registry = WSRegistry()
 
@@ -166,19 +173,13 @@ def run_api(car):
 
         print("Stopping stream")
 
-    @api.on_event("startup")
-    def start_stream():
-        loop.create_task(run_stream())
-        print("Started video stream")
-
-    @api.route("/ws", websocket=True)
-    async def websocket(ws):
-        await ws.accept()
-
+    @api.websocket("/ws")
+    async def websocket(_, ws):
         await registry.add(ws)
 
         async def process_messages():
-            msg = await ws.receive_json()
+            raw = await ws.recv()
+            msg = json.loads(raw)
             if "command" in msg:
                 command = msg["command"]
                 print(f"received command: {command}")
@@ -194,8 +195,8 @@ def run_api(car):
         await receive_data()
 
     @api.route("/capture")
-    async def capture_get(req, resp):
-        resp.media = {"value": await car.capturing.get()}
+    async def capture_get(request):
+        return sjson({"value": await car.capturing.get()})
 
     async def capture(out):
         print("Starting capture")
@@ -218,24 +219,23 @@ def run_api(car):
         print("Stopping capture")
 
     @api.route("/capture/start")
-    async def capture_start(req, resp):
+    async def capture_start(req):
         if await car.capturing.get():
-            resp.status_code = api.status_codes.HTTP_400
-            resp.media = {"error": "already capturing"}
-            return
+            return sjson({"error": "already capturing"}, status=400)
+
         out = req.params.get("out")
         out = Path(out or f"out.{time.time()}")
         if out.exists():
-            resp.status_code = api.status_codes.HTTP_400
-            resp.media = {"error": "can't start capture into existing folder"}
-            return
+            return sjson({"error": "can't start capture into existing folder"}, status=400)
+
         loop = asyncio.get_event_loop()
         await car.capturing.set(True)
         loop.create_task(capture(out))
-        resp.media = {"value": True}
+
+        return sjson({"value": True})
 
     @api.route("/capture/stop")
-    async def capture_stop(req, resp):
+    async def capture_stop(req):
         if not await car.capturing.get():
             resp.status_code = api.status_codes.HTTP_400
             resp.media = {"error": "no capture to stop"}
@@ -243,7 +243,11 @@ def run_api(car):
         await car.capturing.set(False)
         resp.media = {"value": False}
 
-    api.run(loop=loop)
+    @api.listener("after_server_start")
+    async def start_stream(api, loop):
+        loop.create_task(run_stream())
+
+    api.run()
 
 
 if __name__ == "__main__":
