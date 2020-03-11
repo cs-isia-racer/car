@@ -10,7 +10,6 @@ from pathlib import Path
 
 from sanic import Sanic
 from sanic.response import json as sjson
-from sanic.websocket import WebSocketProtocol
 
 MIN_STEERING, MAX_STEERING = -1, 1
 MIN_THROTTLE, MAX_THROTTLE = -1, 1
@@ -126,7 +125,7 @@ async def safe_ws_loop(ws, fn):
         pass
 
 
-def run_api(car):
+def run_api(car, host):
     api = Sanic(__name__)
     api.static('/static', './static')
     capture_stream = AtomicStream(io.BytesIO())
@@ -247,7 +246,7 @@ def run_api(car):
     async def start_stream(api, loop):
         loop.create_task(run_stream())
 
-    api.run()
+    api.run(host=host)
 
 
 if __name__ == "__main__":
@@ -259,9 +258,10 @@ if __name__ == "__main__":
         help="Directory that contains images to return to mock the camera",
     )
     parser.add_argument("--mock-pwm", action="store_true")
+    parser.add_argument("--host", default="127.0.0.1", type='str', help='address to host the server on')
     args = parser.parse_args()
     car = Car(args.mock_cam_dir, args.mock_pwm)
     car.camera.start_preview()
     if not args.mock_cam_dir:
         time.sleep(5)
-    run_api(car)
+    run_api(car, args.host)
