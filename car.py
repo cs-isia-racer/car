@@ -31,7 +31,7 @@ class Car:
         else:
             import wiringpi
 
-        self.camera = PiCamera(resolution=(224, 224), framerate=60)
+        self.camera = PiCamera(resolution=(224, 224), framerate=30)
         if mock_cam_dir is not None:
             self.camera.mock_dir = mock_cam_dir
 
@@ -122,6 +122,7 @@ async def safe_ws_loop(ws, fn):
 def run_api(car):
     api = responder.API()
     capture_stream = AtomicStream(io.BytesIO())
+    loop = asyncio.get_event_loop()
 
     registry = WSRegistry()
 
@@ -134,7 +135,7 @@ def run_api(car):
             stream, format="jpeg", use_video_port=True
         ):
             start = new
-            #   await asyncio.sleep(1 / 60)
+            await asyncio.sleep(1 / 60)
             stream.truncate()
             stream.seek(0)
 
@@ -167,7 +168,6 @@ def run_api(car):
 
     @api.on_event("startup")
     def start_stream():
-        loop = asyncio.get_event_loop()
         loop.create_task(run_stream())
         print("Started video stream")
 
@@ -243,7 +243,7 @@ def run_api(car):
         await car.capturing.set(False)
         resp.media = {"value": False}
 
-    api.run()
+    api.run(loop=loop)
 
 
 if __name__ == "__main__":

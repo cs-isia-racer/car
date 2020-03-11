@@ -25,6 +25,7 @@ class AngleEstimator:
         self.max_line_gap = max_line_gap
         self.offset = offset
         self.angle_limit = angle_limit
+        self._last_angle = 0
 
 
     def predict(self, X):
@@ -131,9 +132,11 @@ class AngleEstimator:
     def predict_and_draw(self, img):
         lines = self._lines(img)
         if lines is None:
-            return 0
+            return self._last_angle
 
         angle = self._angle(lines)
+
+        self._last_angle = angle
 
         return angle, self._draw_lines(img, lines)
 
