@@ -61,7 +61,7 @@ class AbstractClient:
         return base64.b64encode(cv2.imencode(".JPEG", img)[1]).decode()
 
     @classmethod
-    def bootstrap(cls, rate=0.05):
+    def bootstrap(cls, rate=0.05, **kwargs):
         import sys
 
-        cls(sys.argv[1], rate=rate).start()
+        cls(sys.argv[1], rate=rate, **kwargs).start()
