@@ -258,7 +258,7 @@ if __name__ == "__main__":
         help="Directory that contains images to return to mock the camera",
     )
     parser.add_argument("--mock-pwm", action="store_true")
-    parser.add_argument("--host", default="127.0.0.1", type='str', help='address to host the server on')
+    parser.add_argument("--host", default="127.0.0.1", type=str, help='address to host the server on')
     args = parser.parse_args()
     car = Car(args.mock_cam_dir, args.mock_pwm)
     car.camera.start_preview()
