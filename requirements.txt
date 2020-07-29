@@ -49,7 +49,7 @@ typed-ast==1.4.0
 typesystem==0.2.4
 ujson==2.0.1
 urllib3==1.25.7
-uvicorn==0.10.9
+uvicorn==0.11.7
 uvloop==0.14.0
 websocket-client==0.57.0
 websockets==8.1
