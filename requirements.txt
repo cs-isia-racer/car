@@ -28,7 +28,7 @@ Jinja2==2.10.3
 MarkupSafe==1.1.1
 marshmallow==3.3.0
 multidict==4.7.5
-numpy==1.18.1
+numpy==1.22.0
 opencv-python==4.2.0.32
 pathspec==0.7.0
 promise==2.3
