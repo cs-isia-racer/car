@@ -47,7 +47,7 @@ starlette==0.12.13
 toml==0.10.0
 typed-ast==1.4.0
 typesystem==0.2.4
-ujson==2.0.1
+ujson==5.4.0
 urllib3==1.25.7
 uvicorn==0.10.9
 uvloop==0.14.0
